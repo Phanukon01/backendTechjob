@@ -1,4 +1,4 @@
-#  docker compose -f docker-compose-mysql-phpmyadmin.yaml up -d
+# docker compose -f docker-compose-mysql-phpmyadmin.yaml up -d
 
 # docker compose -f docker-compose-mysql-phpmyadmin.yaml down
 
