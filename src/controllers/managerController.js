@@ -1,11 +1,8 @@
-// controllers/managerController.js
-const db = require('../config/db');
+import db from '../config/db.js';
 
-// --- 1. สำหรับ ManagerAccount: ดึงรายชื่อพนักงานและประวัติงาน ---
-exports.getAllEmployeesWithHistory = async (req, res) => {
+export const getAllEmployeesWithHistory = async (req, res) => {
     try {
         const [employees] = await db.execute('SELECT * FROM technicians');
-        // ดึงงานทั้งหมดมาเพื่อไป Map ใน Frontend หรือจะ JOIN ตรงนี้ก็ได้
         const [workHistory] = await db.execute(`
             SELECT wa.technician_id, w.* FROM work_assign wa 
             JOIN work w ON wa.work_id = w.id 
@@ -17,8 +14,7 @@ exports.getAllEmployeesWithHistory = async (req, res) => {
     }
 };
 
-// --- 2. สำหรับ ManagerDashboard & Record: ข้อมูลการเงินรายปี ---
-exports.getFinancialReport = async (req, res) => {
+export const getFinancialReport = async (req, res) => {
     const { year } = req.query;
     try {
         const query = `
@@ -38,8 +34,7 @@ exports.getFinancialReport = async (req, res) => {
     }
 };
 
-// --- 3. สำหรับ ManagerInventory: ประวัติการใช้วัสดุ ---
-exports.getMaterialUsage = async (req, res) => {
+export const getMaterialUsage = async (req, res) => {
     try {
         const query = `
             SELECT 

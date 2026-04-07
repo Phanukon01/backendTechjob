@@ -1,10 +1,14 @@
-const express = require('express');
+import express from 'express';
+import {
+    getAllEmployeesWithHistory,
+    getFinancialReport,
+    getMaterialUsage
+} from '../controllers/managerController.js';
+
 const router = express.Router();
-const managerController = require('../controllers/managerController');
 
-// กำหนด Endpoint สำหรับดึงข้อมูล
-router.get('/inventory', managerController.getInventoryLogs);
-router.get('/dashboard', managerController.getFinancialDashboard);
-router.get('/employees/history', managerController.getEmployeeHistory);
+router.get('/employees', getAllEmployeesWithHistory);
+router.get('/financial-report', getFinancialReport);
+router.get('/inventory', getMaterialUsage);
 
-module.exports = router;
+export default router;
