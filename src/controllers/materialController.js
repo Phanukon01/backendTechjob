@@ -44,6 +44,18 @@ export const getMaterialById = async (req, res) => {
   }
 };
 
+// PUT แก้ไขวัสดุ
+export const updateMaterialById = async (id, { name, quantity, unit }) => {
+    const sql = "UPDATE material SET name=?, quantity=?, unit=? WHERE material_id=?";
+    return await query(sql, [name, quantity, unit, id]);
+};
+
+// DELETE ลบวัสดุ
+export const deleteMaterialById = async (id) => {
+    return await query("DELETE FROM material WHERE material_id=?", [id]);
+};
+
+
 
 export const approveMaterialRequest = async ({ id, status, admin_id }) => {
   const [result] = await pool.execute(
