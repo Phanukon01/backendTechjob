@@ -22,16 +22,6 @@ materialRouter.get("/:id", async (req, res) => {
   getMaterialById(req, res);
 });
 
-// materialRouter.post("/create", async (req, res) => {
-//   // #swagger.tags = ['Materials']
-//   // #swagger.summary = 'เพิ่มรายการอุปกรณ์ใหม่'
-//   /* #swagger.parameters['body'] = {
-//       in: 'body',
-//       schema: { name: 'สายไฟ AWG', quantity: 100, unit: 'เมตร' }
-//   } */
-//   createMaterial(req, res);
-// });
-
 materialRouter.patch('/request/:id/approve', async (req, res) => {
   // #swagger.tags = ['Materials']
   // #swagger.summary = 'อนุมัติหรือปฏิเสธคำขอเบิกอุปกรณ์'
@@ -61,7 +51,7 @@ materialRouter.patch('/request/:id/approve', async (req, res) => {
   }
 })
 
-// 1. ดึงรายการวัสดุทั้งหมด (ใครๆ ก็ดูได้)
+// 1. ดึงรายการวัสดุทั้งหมด 
 materialRouter.get('/', async (req, res) => {
     try {
         const rows = await getAllMaterials();
@@ -73,7 +63,7 @@ materialRouter.get('/', async (req, res) => {
     }
 });
 
-// 2. เพิ่มวัสดุใหม่ (ใครๆ ก็เพิ่มได้)
+// 2. เพิ่มวัสดุใหม่ 
 materialRouter.post('/add', async (req, res) => {
     try {
         await addNewMaterial(req.body);
@@ -85,7 +75,7 @@ materialRouter.post('/add', async (req, res) => {
 
 
 
-// 3. ลบวัสดุ (ใครๆ ก็ลบได้)
+// 3. ลบวัสดุ 
 materialRouter.delete('/:id', async (req, res) => {
     try {
         await deleteMaterialById(req.params.id);

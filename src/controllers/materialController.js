@@ -1,19 +1,20 @@
 import pool from "../config/db.js";
 
-// export const getMaterials = async  (req, res) => {
-//   try {
-//     // แก้ไขชื่อตารางเป็น material (ไม่มี s) ตามรูป php.png
-//     const [rows] = await pool.query("SELECT * FROM material");
-//     res.status(200).json({ message: "Success", materials: rows });
-//   } catch (error) {
-//     res.status(500).json({ message: "Server Error", error: error.message });
-//   }
-// };
-
-
 const query = async (sql, params) => {
   const [rows] = await pool.execute(sql, params);
   return rows;
+};
+
+export const getMaterialById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    // แก้ไขเป็น material_id และตาราง material
+    const [rows] = await pool.query("SELECT * FROM material WHERE material_id = ?", [id]);
+    if (rows.length === 0) return res.status(404).json({ message: "Material not found" });
+    res.status(200).json({ message: "Success", material: rows[0] });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
 };
 
 // GET ทั้งหมด
@@ -38,17 +39,6 @@ export const deleteMaterialById = async (id) => {
     return await query("DELETE FROM material WHERE material_id=?", [id]);
 };
 
-export const getMaterialById = async (req, res) => {
-  const { id } = req.params;
-  try {
-    // แก้ไขเป็น material_id และตาราง material
-    const [rows] = await pool.query("SELECT * FROM material WHERE material_id = ?", [id]);
-    if (rows.length === 0) return res.status(404).json({ message: "Material not found" });
-    res.status(200).json({ message: "Success", material: rows[0] });
-  } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
-  }
-};
 
 
 export const approveMaterialRequest = async ({ id, status, admin_id }) => {
