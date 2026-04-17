@@ -90,7 +90,7 @@ export const register = async (req, res) => {
 export const getUsers = async (req, res) => {
   try {
     const [users] = await pool.execute(
-      'SELECT user_id, username, name, role, type, status, email, phone, department, supervisor_id, created_at FROM users'
+      'SELECT user_id, username, name, role, type, status, email, phone, department, supervisor_id, salary, created_at FROM users'
     );
     return res.status(200).json({
       message: 'ดึงข้อมูลผู้ใช้งานสำเร็จ',
@@ -105,7 +105,11 @@ export const getUsers = async (req, res) => {
 export const getUsersByRole = async (req, res) => {
   const { role } = req.params;
   try {
-    const [rows] = await pool.query("SELECT user_id, username, role, name, status FROM users WHERE role = ?", [role]);
+    // เพิ่ม salary, type, email, phone ให้ครบ
+    const [rows] = await pool.query(
+      "SELECT user_id, username, role, name, status, salary, type, email, phone FROM users WHERE role = ?",
+      [role]
+    );
     res.status(200).json({ message: "Success", users: rows });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
@@ -149,11 +153,11 @@ export const getUserById = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, department } = req.body;
+    const { name, email, phone, department, salary } = req.body; // เพิ่ม salary
 
     const [result] = await pool.query(
-      "UPDATE users SET name = ?, email = ?, phone = ?, department = ? WHERE user_id = ?",
-      [name, email, phone, department, id]
+      "UPDATE users SET name = ?, email = ?, phone = ?, department = ?, salary = ? WHERE user_id = ?", // เพิ่ม salary = ?
+      [name, email, phone, department, salary ?? null, id] // เพิ่ม salary ใน array
     );
 
     if (result.affectedRows === 0) {
