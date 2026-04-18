@@ -8,6 +8,7 @@ import userRoutes from './src/routes/userRoutes.js';
 import managerRoutes from './src/routes/managerRoutes.js';
 import materialRoutes from './src/routes/materialRoutes.js';
 import workRoutes from "./src/routes/workRoutes.js";
+import technicianRoutes from "./src/routes/technicianRoutes.js";
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use('/api/manager', managerRoutes);
 app.use('/api/material', materialRoutes);
 app.use("/materials", materialRoutes);  
 app.use("/works", workRoutes);
+app.use("/technicians", technicianRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
