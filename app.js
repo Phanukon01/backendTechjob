@@ -9,6 +9,8 @@ import managerRoutes from './src/routes/managerRoutes.js';
 import materialRoutes from './src/routes/materialRoutes.js';
 import workRoutes from "./src/routes/workRoutes.js";
 import technicianRoutes from "./src/routes/technicianRoutes.js";
+import salaryRoutes from "./src/routes/salaryRoutes.js";
+import supervisorRoutes from "./src/routes/supervisorRoutes.js";
 
 dotenv.config();
 
@@ -29,9 +31,12 @@ app.use('/api/material', materialRoutes);
 app.use("/materials", materialRoutes);  
 app.use("/works", workRoutes);
 app.use("/technicians", technicianRoutes);
+app.use("/api/materials", materialRoutes);
+app.use("/api/works", workRoutes);
+app.use("/api/salary", salaryRoutes);
+app.use("/api/supervisor", supervisorRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Swagger docs: http://localhost:${PORT}/api-docs`);
 });
-
