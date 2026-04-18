@@ -1,10 +1,37 @@
-import express from 'express';
-// อย่าลืมว่าต้องมี .js ต่อท้ายเสมอ
-import { register } from '../controllers/UserController.js';
+import express from "express";
+import {
+  getUsersByRole,
+  deleteUser,
+  getUserById,
+  updatePassword,
+  updateUser,
+  register,
+  
+} from "../controllers/UserController.js";
 
-const router = express.Router();
+const userRouter = express.Router();
 
-// เส้นทาง: /api/users/register
-router.post('/register', register);
+// ─── Authentication ───────────────────────────────────────────────────────────
+userRouter.post("/register", register);
 
-export default router;
+// ─── Users by Role ────────────────────────────────────────────────────────────
+// GET /api/users/role/technician  หรือ  /api/users/role/supervisor
+userRouter.get("/role/:role", getUsersByRole);
+
+// ─── User by ID ───────────────────────────────────────────────────────────────
+// GET /api/users/:id
+userRouter.get("/:id", getUserById);
+
+// ─── Update User ──────────────────────────────────────────────────────────────
+// PUT /api/users/:id  → อัปเดตข้อมูล (รวม role, work, salary)
+userRouter.put("/:id", updateUser);
+
+// ─── Change Password ──────────────────────────────────────────────────────────
+// PATCH /api/users/password/:id
+userRouter.patch("/password/:id", updatePassword);
+
+// ─── Delete User ──────────────────────────────────────────────────────────────
+// DELETE /api/users/:id  (แก้จาก /user/:id เพื่อให้ตรงกับ AdminAccount.jsx)
+userRouter.delete("/:id", deleteUser);
+
+export default userRouter;
