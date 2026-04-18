@@ -23,6 +23,11 @@ export const getAllMaterials = async () => {
     return await query("SELECT * FROM material ORDER BY material_id DESC", []);
 };
 
+// เพิ่มฟังก์ชันนี้ใน materialController.js
+export const getAllRequests = async () => {
+    // สมมติว่าตารางชื่อ request หรือ material_request
+    return await query("SELECT * FROM material_request ORDER BY id DESC", []);
+};
 
 // POST เพิ่มวัสดุใหม่
 export const addNewMaterial = async ({ material_code, name, quantity, unit }) => {

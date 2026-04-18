@@ -26,11 +26,10 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
 app.use('/api/auth', loginRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/manager', managerRoutes);
-app.use('/api/material', materialRoutes);
-app.use("/materials", materialRoutes);
-app.use("/works", workRoutes);
-app.use("/salary", salaryRoutes);
-app.use("/supervisor", supervisorRoutes);
+app.use("/api/materials", materialRoutes);
+app.use("/api/works", workRoutes);
+app.use("/api/salary", salaryRoutes);
+app.use("/api/supervisor", supervisorRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

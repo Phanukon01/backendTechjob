@@ -1,17 +1,26 @@
 import express from 'express';
-import { getAllMaterials } from '../controllers/materialController.js';
+// แก้ไขบรรทัดนี้ โดยการเพิ่มฟังก์ชันที่เหลือเข้าไป
+import { 
+    getAllMaterials, 
+    getAllRequests, 
+    getMaterialById, 
+    approveMaterialRequest, 
+    addNewMaterial, 
+    updateMaterialById, 
+    deleteMaterialById 
+} from '../controllers/materialController.js';
 
-const router = express.Router();
+const materialRouter = express.Router();
 
-router.get('/', getAllMaterials);
-
-// --- หมวดหมู่ Materials ---
-
-// materialRouter.get("/materials", async (req, res) => {
-//   // #swagger.tags = ['Materials']
-//   // #swagger.summary = 'ดึงข้อมูลอุปกรณ์/วัสดุทั้งหมด'
-//   getMaterials(req, res);
-// });
+materialRouter.get('/requests', async (req, res) => {
+    try {
+        // คุณต้องสร้างฟังก์ชัน getAllRequests ใน controller ก่อน
+        const rows = await getAllRequests(); 
+        res.status(200).json(rows);
+    } catch (error) {
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
 
 materialRouter.get("/:id", async (req, res) => {
   // #swagger.tags = ['Materials']
@@ -48,6 +57,8 @@ materialRouter.patch('/request/:id/approve', async (req, res) => {
   }
 })
 
+
+
 // 1. ดึงรายการวัสดุทั้งหมด 
 materialRouter.get('/', async (req, res) => {
     try {
@@ -82,18 +93,15 @@ materialRouter.delete('/:id', async (req, res) => {
     }
 });
 
-//PUT /🆔 แก้ไขข้อมูลวัสดุ (เช่น แก้ไขชื่อ หรืออัปเดตจำนวนสต็อกหลัก
 materialRouter.put('/:id', async (req, res) => {
-  try {
-    await updateMaterialById(req.params.id, req.body);
-    res.status(200).json({ message: 'Updated' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Internal Server Error' });
-  }
+    try {
+        const { id } = req.params;
+        await updateMaterialById(id, req.body);
+        res.status(200).json({ message: 'Updated successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
 });
-
-
-
 
 export default materialRouter;
