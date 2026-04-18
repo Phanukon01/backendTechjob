@@ -6,6 +6,7 @@ import {
     getMaterialUsage,
     updateUserProfile,
     updatePassword,
+    getWorkRecords,
 } from '../controllers/managerController.js';
 
 const router = express.Router();
@@ -18,5 +19,7 @@ router.get('/inventory', getMaterialUsage);
 router.put('/update-profile/:id', updateUserProfile);
 // เพิ่มเส้นทางสำหรับการเปลี่ยนรหัสผ่าน
 router.put('/update-password/:id', updatePassword);
+// เพิ่ม Route สำหรับดึงประวัติงาน
+router.get('/work-records', getWorkRecords);
 
 export default router;

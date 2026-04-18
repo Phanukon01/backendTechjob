@@ -24,7 +24,6 @@ export const getUserProfile = async (req, res) => {
 };
 
 // 1. ฟังก์ชันสำหรับหน้า จัดการบัญชีพนักงาน (แก้ SQL ให้ปลอดภัยแล้ว)
-// ฟังก์ชันสำหรับหน้า จัดการบัญชีพนักงาน (เพิ่มเงื่อนไขไม่เอา manager)
 export const getAllEmployeesWithHistory = async (req, res) => {
     try {
         // ดึงเฉพาะ user ที่ไม่ใช่ manager
@@ -48,22 +47,43 @@ export const getAllEmployeesWithHistory = async (req, res) => {
 
 // 2. ฟังก์ชันสำหรับหน้า Manager Dashboard (กู้คืนมาให้แล้ว + ปรับชื่อคอลัมน์นิดหน่อย)
 // 2. ฟังก์ชันสำหรับหน้า Manager Dashboard (แก้ไข SQL ให้ตรงกับฐานข้อมูล)
+
+// ฟังก์ชันสำหรับหน้า Manager Record (ประวัติงานและสถานะทั้งหมด)
+export const getWorkRecords = async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                w.work_id, w.job_name, w.customer_name, w.job_type, 
+                w.job_detail, w.location, w.start_date, w.status,
+                IFNULL(we.material_cost, 0) as material_cost,
+                IFNULL(we.other_cost, 0) as other_cost,
+                IFNULL(we.revenue, 0) as revenue,
+                IFNULL(we.profit, 0) as profit
+            FROM work w
+            LEFT JOIN work_expense we ON w.work_id = we.work_id
+            ORDER BY w.work_id DESC
+        `;
+        const [records] = await db.execute(query);
+        res.json(records);
+    } catch (error) {
+        console.error("🔥 จุดที่พังใน getWorkRecords:", error.message);
+        res.status(500).json({ message: error.message });
+    }
+};
 export const getFinancialReport = async (req, res) => {
     const { year } = req.query;
     try {
         const query = `
-            SELECT 
-                w.work_id AS id, 
-                w.job_name AS namework, 
-                w.start_date AS datework, 
-                IFNULL(SUM(we.revenue), 0) AS income, 
-                IFNULL(SUM(we.total_cost), 0) AS total_cost,
-                (IFNULL(SUM(we.revenue), 0) - IFNULL(SUM(we.total_cost), 0)) AS profit
-            FROM work w
-            LEFT JOIN work_expense we ON w.work_id = we.work_id
-            WHERE YEAR(w.start_date) = ? 
-            GROUP BY w.work_id, w.job_name, w.start_date
-        `;
+    SELECT 
+        w.start_date, 
+        w.work_id,
+        IFNULL(we.revenue, 0) as revenue,
+        IFNULL(we.total_cost, 0) as total_cost,
+        IFNULL(we.profit, 0) as profit
+    FROM work w
+    LEFT JOIN work_expense we ON w.work_id = we.work_id
+    WHERE YEAR(w.start_date) = ?
+`;
 
         const [records] = await db.execute(query, [year]);
 
