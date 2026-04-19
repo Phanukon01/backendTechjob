@@ -2,7 +2,8 @@ import { Router } from 'express'
 import {
   createWork, assignWorkToUser, getWorksByUserId, getAllWorks, getWorkById,
   updateWork, deleteWork, getWorksByTechnicianId, updateWorkStatus,
-  getWorksBySupervisorId, getWorksBySupervisorIdToday, updateTechnicianStatus, reviewWork
+  getWorksBySupervisorId, getWorksBySupervisorIdToday, updateTechnicianStatus, reviewWork,
+  getExpensesByWorkId
 } from '../controllers/workController.js'
 
 const workRouter = Router()
@@ -35,15 +36,17 @@ workRouter.post('/assign/:id', async (req, res) => {
 })
 
 workRouter.get('/getAll', async (req, res) => {
-  // #swagger.tags = ['Works']
-  // #swagger.summary = 'ดึงข้อมูลใบงานทั้งหมด'
   try {
-    const rows = await getAllWorks()
-    res.status(200).json({ message: 'Ok', works: rows })
+    // 1. เรียก Controller เพื่อดึงข้อมูล (ได้ rows กลับมา)
+    const rows = await getAllWorks();
+    
+    // 2. Router เป็นคนส่ง Response กลับหน้าเว็บ
+    res.status(200).json({ works: rows });
   } catch (error) {
-    res.status(500).json({ message: 'Internal Server Error' })
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
   }
-})
+});
 
 workRouter.get('/getById/:id', async (req, res) => {
   // #swagger.tags = ['Works']
@@ -152,5 +155,19 @@ workRouter.patch('/:id/assign/:techId/review', async (req, res) => {
   // #swagger.summary = 'หัวหน้างานตรวจรับงานและประเมิน'
   reviewWork(req, res);
 });
+
+
+// ✅ ดึงรายการวัสดุ/ค่าใช้จ่ายของงาน
+workRouter.get('/:id/expenses', async (req, res) => {
+  // #swagger.tags = ['Works']
+  // #swagger.summary = 'ดึงรายการวัสดุและค่าใช้จ่ายของงาน'
+  try {
+    const { id } = req.params;
+    const rows = await getExpensesByWorkId(id);
+    res.status(200).json({ message: 'Ok', expenses: rows });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+})
 
 export default workRouter

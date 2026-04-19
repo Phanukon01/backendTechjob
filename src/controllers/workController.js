@@ -28,9 +28,19 @@ export const getWorksByUserId = async (userId) => {
 }
 
 export const getAllWorks = async () => {
-  const [rows] = await pool.execute(`SELECT * FROM work`)
-  return rows
-}
+  const [rows] = await pool.execute(`
+    SELECT w.*,
+           IFNULL(SUM(e.material_cost), 0) AS material_cost,
+           IFNULL(SUM(e.other_cost), 0)    AS other_cost,
+           IFNULL(SUM(e.total_cost), 0)    AS total_cost,
+           IFNULL(SUM(e.revenue), 0)       AS revenue,
+           IFNULL(SUM(e.profit), 0)        AS profit
+    FROM work w
+    LEFT JOIN work_expense e ON w.work_id = e.work_id
+    GROUP BY w.work_id
+  `);
+  return rows;
+};
 
 export const getWorkById = async (id) => {
   const [rows] = await pool.execute(`SELECT * FROM work WHERE work_id = ?`, [id])
@@ -133,4 +143,12 @@ export const reviewWork = async (req, res) => {
     console.error("Error in reviewWork:", error);
     res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
   }
+};
+// ✅ ดึงรายการวัสดุ/ค่าใช้จ่ายทั้งหมดของงาน
+export const getExpensesByWorkId = async (id) => {
+  const [rows] = await pool.execute(
+    `SELECT * FROM work_expense WHERE work_id = ? ORDER BY created_at ASC`,
+    [id]
+  );
+  return rows;
 };
