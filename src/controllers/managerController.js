@@ -90,24 +90,24 @@ export const getUserProfile = async (req, res) => {
 // 1. ฟังก์ชันสำหรับหน้า จัดการบัญชีพนักงาน
 export const getAllEmployeesWithHistory = async (req, res) => {
     try {
-        // ดึงเฉพาะ user ที่ไม่ใช่ manager
         const [employees] = await db.execute(`
             SELECT user_id, username, name, nickname, role, type, status, email, phone, department 
             FROM users 
             WHERE role != 'manager'
         `);
 
-        // 🌟 แก้ไข SQL ให้ดึงข้อมูล รายได้, ต้นทุน และ กำไร มาด้วย
+        // เปลี่ยน COALESCE เป็น IFNULL ให้เหมือนฟังก์ชันอื่นๆ ที่ทำงานได้ปกติ
         const [workHistory] = await db.execute(`
             SELECT 
-                wa.technician_id, w.*,
+                w.*, 
+                wa.technician_id,
                 IFNULL(we.material_cost, 0) as material_cost,
                 IFNULL(we.other_cost, 0) as other_cost,
                 IFNULL(we.total_cost, 0) as total_cost,
                 IFNULL(we.revenue, 0) as revenue,
                 IFNULL(we.profit, 0) as profit
-            FROM work_assign wa 
-            JOIN work w ON wa.work_id = w.work_id
+            FROM work w
+            LEFT JOIN work_assign wa ON w.work_id = wa.work_id
             LEFT JOIN work_expense we ON w.work_id = we.work_id
             ORDER BY w.start_date DESC
         `);
