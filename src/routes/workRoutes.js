@@ -3,7 +3,8 @@ import {
   createWork, assignWorkToUser, getWorksByUserId, getAllWorks, getWorkById,
   updateWork, deleteWork, getWorksByTechnicianId, updateWorkStatus,
   getWorksBySupervisorId, getWorksBySupervisorIdToday, updateTechnicianStatus, reviewWork,
-  getExpensesByWorkId, uploadReport, uploadReportImages
+  getExpensesByWorkId, uploadReport, uploadReportImages,
+  submitWorkReport, getWorkReportsBySupervisor, getPendingInspectionWorks
 } from '../controllers/workController.js'
 
 const workRouter = Router()
@@ -37,10 +38,7 @@ workRouter.post('/assign/:id', async (req, res) => {
 
 workRouter.get('/getAll', async (req, res) => {
   try {
-    // 1. เรียก Controller เพื่อดึงข้อมูล (ได้ rows กลับมา)
     const rows = await getAllWorks();
-    
-    // 2. Router เป็นคนส่ง Response กลับหน้าเว็บ
     res.status(200).json({ works: rows });
   } catch (error) {
     console.error(error);
@@ -156,7 +154,6 @@ workRouter.patch('/:id/assign/:techId/review', async (req, res) => {
   reviewWork(req, res);
 });
 
-
 // ✅ ดึงรายการวัสดุ/ค่าใช้จ่ายของงาน
 workRouter.get('/:id/expenses', async (req, res) => {
   // #swagger.tags = ['Works']
@@ -170,18 +167,6 @@ workRouter.get('/:id/expenses', async (req, res) => {
   }
 })
 
-workRouter.get('/technician/:id', async (req, res) => {
-  try {
-    const { id } = req.params
-    const rows = await getWorksByTechnicianId(id)
-    res.status(200).json({ message: 'Ok', works: rows })
-  } catch (error) {
-    res.status(500).json({ message: 'Internal Server Error', error: error.message })
-  }
-})
-workRouter.patch('/:id/assign/:techId/review', async (req, res) => {
-  reviewWork(req, res)
-})
 workRouter.post(
   '/:workId/report-images',
   uploadReport.fields([
@@ -191,5 +176,30 @@ workRouter.post(
   ]),
   uploadReportImages
 )
+
+workRouter.post('/report', async (req, res) => {
+  // #swagger.tags = ['Works']
+  // #swagger.summary = 'ส่งรายงานผลการทำงาน/ปัญหา'
+  submitWorkReport(req, res);
+});
+
+workRouter.get('/reports/supervisor/:id', async (req, res) => {
+  // #swagger.tags = ['Works']
+  // #swagger.summary = 'ดึงรายงานทั้งหมดของ Supervisor'
+  getWorkReportsBySupervisor(req, res);
+});
+
+workRouter.get('/supervisor/:id/pending-inspection', async (req, res) => {
+  // #swagger.tags = ['Works']
+  // #swagger.summary = 'ดึงงานที่รอตรวจของ Supervisor (JOIN work_report)'
+  try {
+    const { id } = req.params;
+    const rows = await getPendingInspectionWorks(id);
+    res.status(200).json({ message: 'Ok', works: rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
 
 export default workRouter
