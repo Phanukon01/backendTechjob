@@ -5,84 +5,33 @@ import {
   getUserById,
   updatePassword,
   updateUser,
-  login,
   register,
-  getUsers
+  
 } from "../controllers/UserController.js";
 
 const userRouter = express.Router();
 
-// --- หมวดหมู่ Users ---
+// ─── Authentication ───────────────────────────────────────────────────────────
+userRouter.post("/register", register);
 
-userRouter.get("/", async (req, res) => {
-  // #swagger.tags = ['Users']
-  // #swagger.summary = 'ดึงข้อมูลผู้ใช้งานทั้งหมด'
-  getUsers(req, res);
-});
+// ─── Users by Role ────────────────────────────────────────────────────────────
+// GET /api/users/role/technician  หรือ  /api/users/role/supervisor
+userRouter.get("/role/:role", getUsersByRole);
 
-userRouter.get("/role/:role", async (req, res) => {
-  // #swagger.tags = ['Users']
-  // #swagger.summary = 'ดึงข้อมูลผู้ใช้งานตาม Role'
-  getUsersByRole(req, res);
-});
+// ─── User by ID ───────────────────────────────────────────────────────────────
+// GET /api/users/:id
+userRouter.get("/:id", getUserById);
 
-userRouter.get("/:id", async (req, res) => {
-  // #swagger.tags = ['Users']
-  // #swagger.summary = 'ดึงข้อมูลผู้ใช้งานตาม ID'
-  getUserById(req, res);
-});
+// ─── Update User ──────────────────────────────────────────────────────────────
+// PUT /api/users/:id  → อัปเดตข้อมูล (รวม role, work, salary)
+userRouter.put("/:id", updateUser);
 
-userRouter.put("/user/:id", async (req, res) => {
-  // #swagger.tags = ['Users']
-  // #swagger.summary = 'แก้ไขข้อมูลผู้ใช้งาน'
-  /* #swagger.parameters['id'] = { description: 'User ID' } */
-  /* #swagger.parameters['body'] = {
-      in: 'body',
-      schema: {   "name": "newname", "email": "new@mail.com", "phone": "0022","department" : "111","id" : 1}
-  } */
-  updateUser(req, res);
-});
+// ─── Change Password ──────────────────────────────────────────────────────────
+// PATCH /api/users/password/:id
+userRouter.patch("/password/:id", updatePassword);
 
-userRouter.patch("/password/:id", async (req, res) => {
-  // #swagger.tags = ['Users']
-  // #swagger.summary = 'เปลี่ยนรหัสผ่าน'
-  /* #swagger.parameters['id'] = { description: 'User ID' } */
-  /* #swagger.parameters['body'] = {
-      in: 'body',
-      schema: { oldPassword: 'old123', newPassword: 'new123' }
-  } */
-  updatePassword(req, res);
-});
-
-userRouter.delete("/user/:id", async (req, res) => {
-  // #swagger.tags = ['Users']
-  // #swagger.summary = 'ลบผู้ใช้งาน'
-  deleteUser(req, res);
-});
-
-// --- หมวดหมู่ Authentication ---
-
-userRouter.post("/login", async (req, res) => {
-  // #swagger.tags = ['Users']
-  // #swagger.summary = 'เข้าสู่ระบบ'
-  /* #swagger.parameters['body'] = {
-      in: 'body',
-      description: 'กรอก Username และ Password',
-      schema: { username: 'admin', password: '123' }
-  } */
-  login(req, res);
-});
-
-userRouter.post("/register", async (req, res) => {
-  // #swagger.tags = ['Users']
-  // #swagger.summary = 'ลงทะเบียนผู้ใช้ใหม่'
-  /* #swagger.parameters['body'] = {
-      in: 'body',
-      schema: { username: 'user01', password: '123', name: 'John Doe', email: 'john@mail.com', role: 'technician' }
-  } */
-  register(req, res);
-});
-
-
+// ─── Delete User ──────────────────────────────────────────────────────────────
+// DELETE /api/users/:id  (แก้จาก /user/:id เพื่อให้ตรงกับ AdminAccount.jsx)
+userRouter.delete("/:id", deleteUser);
 
 export default userRouter;

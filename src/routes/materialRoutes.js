@@ -1,36 +1,33 @@
-import express from "express";
-import {
-  getMaterialById,
-  approveMaterialRequest, 
-  getAllMaterials, addNewMaterial, updateMaterialById, deleteMaterialById
-
-} from "../controllers/materialController.js";
+import express from 'express';
+// แก้ไขบรรทัดนี้ โดยการเพิ่มฟังก์ชันที่เหลือเข้าไป
+import { 
+    getAllMaterials, 
+    getAllRequests, 
+    getMaterialById, 
+    approveMaterialRequest, 
+    addNewMaterial, 
+    updateMaterialById, 
+    deleteMaterialById,
+    getRequestsByUserId
+} from '../controllers/materialController.js';
 
 const materialRouter = express.Router();
 
-// --- หมวดหมู่ Materials ---
-
-// materialRouter.get("/materials", async (req, res) => {
-//   // #swagger.tags = ['Materials']
-//   // #swagger.summary = 'ดึงข้อมูลอุปกรณ์/วัสดุทั้งหมด'
-//   getMaterials(req, res);
-// });
+materialRouter.get('/requests', async (req, res) => {
+    try {
+        // คุณต้องสร้างฟังก์ชัน getAllRequests ใน controller ก่อน
+        const rows = await getAllRequests(); 
+        res.status(200).json(rows);
+    } catch (error) {
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
 
 materialRouter.get("/:id", async (req, res) => {
   // #swagger.tags = ['Materials']
   // #swagger.summary = 'ดึงข้อมูลอุปกรณ์ตาม ID'
   getMaterialById(req, res);
 });
-
-// materialRouter.post("/create", async (req, res) => {
-//   // #swagger.tags = ['Materials']
-//   // #swagger.summary = 'เพิ่มรายการอุปกรณ์ใหม่'
-//   /* #swagger.parameters['body'] = {
-//       in: 'body',
-//       schema: { name: 'สายไฟ AWG', quantity: 100, unit: 'เมตร' }
-//   } */
-//   createMaterial(req, res);
-// });
 
 materialRouter.patch('/request/:id/approve', async (req, res) => {
   // #swagger.tags = ['Materials']
@@ -61,7 +58,9 @@ materialRouter.patch('/request/:id/approve', async (req, res) => {
   }
 })
 
-// 1. ดึงรายการวัสดุทั้งหมด (ใครๆ ก็ดูได้)
+
+
+// 1. ดึงรายการวัสดุทั้งหมด 
 materialRouter.get('/', async (req, res) => {
     try {
         const rows = await getAllMaterials();
@@ -73,7 +72,7 @@ materialRouter.get('/', async (req, res) => {
     }
 });
 
-// 2. เพิ่มวัสดุใหม่ (ใครๆ ก็เพิ่มได้)
+// 2. เพิ่มวัสดุใหม่ 
 materialRouter.post('/add', async (req, res) => {
     try {
         await addNewMaterial(req.body);
@@ -85,7 +84,7 @@ materialRouter.post('/add', async (req, res) => {
 
 
 
-// 3. ลบวัสดุ (ใครๆ ก็ลบได้)
+// 3. ลบวัสดุ 
 materialRouter.delete('/:id', async (req, res) => {
     try {
         await deleteMaterialById(req.params.id);
@@ -95,18 +94,38 @@ materialRouter.delete('/:id', async (req, res) => {
     }
 });
 
-//PUT /🆔 แก้ไขข้อมูลวัสดุ (เช่น แก้ไขชื่อ หรืออัปเดตจำนวนสต็อกหลัก
 materialRouter.put('/:id', async (req, res) => {
-  try {
-    await updateMaterialById(req.params.id, req.body);
-    res.status(200).json({ message: 'Updated' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Internal Server Error' });
-  }
+    try {
+        const { id } = req.params;
+        await updateMaterialById(id, req.body);
+        res.status(200).json({ message: 'Updated successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
 });
 
+// [เพิ่มใหม่] ดึงประวัติการเบิกวัสดุ เฉพาะของ User นั้นๆ
+materialRouter.get('/history/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const rows = await getRequestsByUserId(userId); // เรียกใช้ฟังก์ชันที่เราเพิ่งแก้
+        res.status(200).json({ materials: rows });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
 
-
+// [เพิ่มใหม่] รับเรื่องการเบิกวัสดุใหม่จากหน้า Dashboard
+materialRouter.post('/request', async (req, res) => {
+    try {
+        // req.body ควรส่ง { user_id, material_name, quantity }
+        await requestMaterial(req.body);
+        res.status(201).json({ message: 'Request Sent Successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
 
 export default materialRouter;

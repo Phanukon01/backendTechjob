@@ -1,6 +1,4 @@
-
 import pool from '../config/db.js'
-
 
 export const createWork = async ({ job_name, customer_name, job_type, job_detail, location, start_date, work_time, supervisor_id, admin_id }) => {
   const [rows] = await pool.execute(
@@ -21,8 +19,9 @@ export const assignWorkToUser = async ({ work_id, technician_id }) => {
 
 export const getWorksByUserId = async (userId) => {
   const [rows] = await pool.execute(
-    `SELECT w.* FROM work w
-     JOIN work_assign wa ON w.id = wa.work_id
+    `SELECT w.*, wa.status AS assign_status
+     FROM work w
+     JOIN work_assign wa ON w.work_id = wa.work_id
      WHERE wa.technician_id = ?`,
     [userId]
   )
@@ -54,25 +53,37 @@ export const deleteWork = async (id) => {
 
 export const getWorksBySupervisorId = async (supervisorId) => {
   const [rows] = await pool.execute(
-    `SELECT * FROM work WHERE supervisor_id = ?`,
+    `SELECT * FROM work WHERE supervisor_id = ? ORDER BY created_at DESC`,
     [supervisorId]
   )
   return rows
 }
 
-export const getWorksByTechnicianId = async (id) => {
-  // แก้ไขจาก userId เป็น id และใช้ w.work_id
+export const getWorksBySupervisorIdToday = async (supervisorId) => {
   const [rows] = await pool.execute(
-    `SELECT w.* FROM work w
+    `SELECT * FROM work 
+     WHERE supervisor_id = ? 
+       AND DATE(start_date) = CURDATE()
+     ORDER BY work_time ASC`,
+    [supervisorId]
+  )
+  return rows
+}
+
+// ✅ ดึง status จาก work_assign ด้วย (assign_status) เพราะ status จริงอยู่ที่นั่น
+export const getWorksByTechnicianId = async (id) => {
+  const [rows] = await pool.execute(
+    `SELECT w.*, wa.status AS assign_status
+     FROM work w
      JOIN work_assign wa ON w.work_id = wa.work_id
-     WHERE wa.technician_id = ?`,
+     WHERE wa.technician_id = ?
+     ORDER BY w.start_date DESC`,
     [id]
   );
   return rows;
 };
 
 export const updateWorkStatus = async (id, status) => {
-  // แก้ไขเป็น work_id
   const [result] = await pool.execute(
     `UPDATE work SET status = ? WHERE work_id = ?`,
     [status, id]
@@ -81,51 +92,47 @@ export const updateWorkStatus = async (id, status) => {
 };
 
 export const updateTechnicianStatus = async (req, res) => {
-    try {
-        const { id, techId } = req.params; // รับรหัสงาน และ รหัสช่าง
-        const { status } = req.body; // รับ "สถานะ" ที่ส่งมา
+  try {
+    const { id, techId } = req.params;
+    const { status } = req.body;
 
-        // อัปเดตสถานะของงานนี้ที่เป็นของช่างคนนี้
-        const [result] = await pool.query(
-            "UPDATE work_assign SET status = ? WHERE work_id = ? AND technician_id = ?",
-            [status, id, techId]
-        );
+    const [result] = await pool.query(
+      "UPDATE work_assign SET status = ? WHERE work_id = ? AND technician_id = ?",
+      [status, id, techId]
+    );
 
-        // ถ้าหาแฟ้มมอบหมายงานไม่เจอ
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: "ไม่พบข้อมูลการมอบหมายงานนี้" });
-        }
-
-        res.status(200).json({ message: "ช่างอัปเดตสถานะงานสำเร็จ", status: status });
-    } catch (error) {
-        console.error("Error in updateWorkStatus:", error);
-        res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "ไม่พบข้อมูลการมอบหมายงานนี้" });
     }
+
+    res.status(200).json({ message: "ช่างอัปเดตสถานะงานสำเร็จ", status: status });
+  } catch (error) {
+    console.error("Error in updateTechnicianStatus:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+  }
 };
 
-// 3. ฟังก์ชันหัวหน้าตรวจงาน (ตรวจว่าผ่าน หรือ ต้องแก้)
 export const reviewWork = async (req, res) => {
-    try {
-        const { id, techId } = req.params; // รับรหัสงาน และ รหัสช่าง
-        const { status, comment } = req.body; // รับสถานะการตรวจ และ คอมเมนต์เพิ่มเติมจากหัวหน้า
+  try {
+    const { id, techId } = req.params;
+    const { status, comment } = req.body;
 
-        // อัปเดตสถานะงานเข้าไปในระบบ
-        const [result] = await pool.query(
-            "UPDATE work_assign SET status = ? WHERE work_id = ? AND technician_id = ?",
-            [status, id, techId]
-        );
+    const [result] = await pool.query(
+      "UPDATE work_assign SET status = ? WHERE work_id = ? AND technician_id = ?",
+      [status, id, techId]
+    );
 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: "ไม่พบข้อมูลการมอบหมายงานนี้" });
-        }
-
-        res.status(200).json({
-            message: "หัวหน้าอัปเดตผลการตรวจงานสำเร็จ",
-            status: status,
-            comment: comment || null // แนบคอมเมนต์กลับไปให้ดูด้วย (ถ้ามี)
-        });
-    } catch (error) {
-        console.error("Error in reviewWork:", error);
-        res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "ไม่พบข้อมูลการมอบหมายงานนี้" });
     }
+
+    res.status(200).json({
+      message: "หัวหน้าอัปเดตผลการตรวจงานสำเร็จ",
+      status: status,
+      comment: comment || null
+    });
+  } catch (error) {
+    console.error("Error in reviewWork:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+  }
 };
