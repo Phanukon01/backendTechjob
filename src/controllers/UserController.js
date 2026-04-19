@@ -79,12 +79,13 @@ export const getUsersByRole = async (req, res) => {
 
 // ─── อัปเดตข้อมูลผู้ใช้ (รวม role, type, salary) ─────────────────────────────
 // ─── อัปเดตข้อมูลผู้ใช้ (UserController.js) ─────────────────────────────
+// ในไฟล์ UserController.js ฟังก์ชัน updateUser
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    // รับค่าจาก req.body (ตัด birthday และ profile_image ออกตามที่ตกลงกัน)
+    // แก้ไขตรงนี้: เปลี่ยน typework เป็น type
     const { name, email, phone, department, nickname, 
-            typework, expertise, salary, role } = req.body; 
+            type, expertise, salary, role } = req.body; 
 
     const [existing] = await pool.query(
       "SELECT user_id FROM users WHERE user_id = ?", [id]
@@ -93,10 +94,6 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ message: "ไม่พบข้อมูลผู้ใช้งาน" });
     }
 
-    // แก้ไข SQL: 
-    // 1. เปลี่ยน work เป็น type 
-    // 2. ลบ birthday และ profile_image ออก 
-    // 3. หลัง role = ? ห้ามมีคอมม่า
     const sql = `
       UPDATE users SET
         name        = ?,
@@ -117,7 +114,7 @@ export const updateUser = async (req, res) => {
       phone       || null,
       department  || null,
       nickname    || null,
-      typework    || null, 
+      type        || null, // แก้ไขตรงนี้: ใช้ type
       expertise   || null,
       salary      ? parseFloat(salary) : 0,
       role        || 'technician',
