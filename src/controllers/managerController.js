@@ -178,7 +178,7 @@ export const getMaterialUsage = async (req, res) => {
             FROM material_request mr
             JOIN material m ON mr.material_id = m.material_id
             JOIN work w ON mr.work_id = w.work_id
-            JOIN technicians t ON mr.technician_id = t.technician_id
+            JOIN users t ON mr.technician_id = t.user_id
             ORDER BY mr.request_date DESC
         `;
         const [usage] = await db.execute(query);

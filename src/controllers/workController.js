@@ -3,11 +3,11 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 
-export const createWork = async ({ job_name, customer_name, job_type, job_detail, location, start_date, work_time, job_price, supervisor_id, admin_id }) => {
+export const createWork = async ({ job_name, customer_name, job_type, job_detail, location, start_date, work_time, job_price, supervisor_id, admin_id, lat, lng }) => {
   const [rows] = await pool.execute(
-    `INSERT INTO work (job_name, customer_name, job_type, job_detail, location, start_date, work_time, job_price, supervisor_id, admin_id) 
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
-    [job_name, customer_name, job_type, job_detail, location, start_date, work_time, job_price || 0, supervisor_id, admin_id]
+    `INSERT INTO work (job_name, customer_name, job_type, job_detail, location, start_date, work_time, job_price, supervisor_id, admin_id, lat, lng) 
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [job_name, customer_name, job_type, job_detail, location, start_date, work_time, job_price || 0, supervisor_id, admin_id, lat || null, lng || null]
   )
   return rows
 }
@@ -32,6 +32,7 @@ const reportStorage = multer.diskStorage({
 })
 
 export const uploadReport = multer({ storage: reportStorage })
+
 export const getWorksByUserId = async (userId) => {
   const [rows] = await pool.execute(
     `SELECT w.*, wa.status AS assign_status
@@ -49,7 +50,6 @@ export const getAllWorks = async () => {
            IFNULL(SUM(e.material_cost), 0) AS material_cost,
            IFNULL(SUM(e.other_cost), 0)    AS other_cost,
            IFNULL(SUM(e.total_cost), 0)    AS total_cost,
-           -- คำนวณกำไรสดๆ: เอารายรับ(job_price) ลบด้วย ต้นทุนรวม(total_cost)
            (w.job_price - IFNULL(SUM(e.total_cost), 0)) AS profit
     FROM work w
     LEFT JOIN work_expense e ON w.work_id = e.work_id
@@ -63,10 +63,10 @@ export const getWorkById = async (id) => {
   return rows
 }
 
-export const updateWork = async ({ work_id, job_name, customer_name, job_type, job_detail, location, start_date, work_time, job_price, supervisor_id, admin_id }) => {
+export const updateWork = async ({ work_id, job_name, customer_name, job_type, job_detail, location, start_date, work_time, job_price, supervisor_id, admin_id, lat, lng }) => {
   const [result] = await pool.execute(
-    `UPDATE work SET job_name = ?, customer_name = ?, job_type = ?, job_detail = ?, location = ?, start_date = ?, work_time = ?, job_price = ?, supervisor_id = ?, admin_id = ? WHERE work_id = ?`,
-    [job_name, customer_name, job_type, job_detail, location, start_date, work_time, job_price || 0, supervisor_id, admin_id, work_id]
+    `UPDATE work SET job_name = ?, customer_name = ?, job_type = ?, job_detail = ?, location = ?, start_date = ?, work_time = ?, job_price = ?, supervisor_id = ?, admin_id = ?, lat = ?, lng = ? WHERE work_id = ?`,
+    [job_name, customer_name, job_type, job_detail, location, start_date, work_time, job_price || 0, supervisor_id, admin_id, lat || null, lng || null, work_id]
   )
   return result
 }
@@ -78,7 +78,13 @@ export const deleteWork = async (id) => {
 
 export const getWorksBySupervisorId = async (supervisorId) => {
   const [rows] = await pool.execute(
-    `SELECT * FROM work WHERE supervisor_id = ? ORDER BY created_at DESC`,
+    `SELECT w.*, GROUP_CONCAT(u.name SEPARATOR ', ') as technicianName
+     FROM work w
+     LEFT JOIN work_assign wa ON w.work_id = wa.work_id
+     LEFT JOIN users u ON wa.technician_id = u.user_id
+     WHERE w.supervisor_id = ? 
+     GROUP BY w.work_id
+     ORDER BY w.created_at DESC`,
     [supervisorId]
   )
   return rows
@@ -86,15 +92,18 @@ export const getWorksBySupervisorId = async (supervisorId) => {
 
 export const getWorksBySupervisorIdToday = async (supervisorId) => {
   const [rows] = await pool.execute(
-    `SELECT * FROM work 
-     WHERE supervisor_id = ? 
-       AND DATE(start_date) = CURDATE()
-     ORDER BY work_time ASC`,
+    `SELECT w.*, GROUP_CONCAT(u.name SEPARATOR ', ') as technicianName
+     FROM work w
+     LEFT JOIN work_assign wa ON w.work_id = wa.work_id
+     LEFT JOIN users u ON wa.technician_id = u.user_id
+     WHERE w.supervisor_id = ? 
+       AND DATE(w.start_date) = CURDATE()
+     GROUP BY w.work_id
+     ORDER BY w.work_time ASC`,
     [supervisorId]
   )
   return rows
 }
-
 
 export const updateWorkStatus = async (id, status) => {
   const [result] = await pool.execute(
@@ -103,7 +112,6 @@ export const updateWorkStatus = async (id, status) => {
   );
   return result;
 };
-
 
 export const reviewWork = async (req, res) => {
   try {
@@ -129,7 +137,7 @@ export const reviewWork = async (req, res) => {
     res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
   }
 };
-// ✅ ดึงรายการวัสดุ/ค่าใช้จ่ายทั้งหมดของงาน
+
 export const getExpensesByWorkId = async (id) => {
   const [rows] = await pool.execute(
     `SELECT * FROM work_expense WHERE work_id = ? ORDER BY created_at ASC`,
@@ -137,7 +145,6 @@ export const getExpensesByWorkId = async (id) => {
   );
   return rows;
 };
-
 
 export const getWorksByTechnicianId = async (technicianId) => {
   const [rows] = await pool.query(
@@ -156,21 +163,16 @@ export const getWorksByTechnicianId = async (technicianId) => {
   return rows
 }
 
-// ── ดึงงานของช่างพร้อม work_report ──────────────────────────────────────────────────────────────────────────────
-
 export const updateTechnicianStatus = async (req, res) => {
   try {
     const { id, techId } = req.params
     const { status, work_status, work_note, materials_used, finish_time } = req.body
 
-    // Map ค่าที่รับมาให้ตรงกับ ENUM ใน DB
     const allowedAssignStatus = ['รับงาน', 'ส่งตรวจ', 'ผ่าน', 'ส่งกลับ']
-
-    // รองรับทั้งภาษาไทยและภาษาอังกฤษจาก Frontend
     const statusMap = {
       'submitted': 'ส่งตรวจ',
       'ส่งตรวจ': 'ส่งตรวจ',
-      'PendingInspection': 'ส่งตรวจ',   // เพิ่มบรรทัดนี้
+      'PendingInspection': 'ส่งตรวจ',
       'accepted': 'รับงาน',
       'รับงาน': 'รับงาน',
     }
@@ -178,27 +180,24 @@ export const updateTechnicianStatus = async (req, res) => {
 
     if (!allowedAssignStatus.includes(mappedStatus)) {
       return res.status(400).json({
-        message: `ค่า status '${status}' ไม่ถูกต้อง`, // แก้ไข: ใส่ Backticks
+        message: `ค่า status '${status}' ไม่ถูกต้อง`,
         allowed: allowedAssignStatus
       })
     }
 
-    // 1. ตรวจว่า work_assign มีข้อมูลนี้จริง
     const [assignRows] = await pool.query(
       'SELECT assign_id FROM work_assign WHERE work_id = ? AND technician_id = ?',
       [id, techId]
     )
     if (assignRows.length === 0) {
-      return res.status(404).json({ message: `ไม่พบการมอบหมายงาน work_id=${id} technician_id=${techId}` }) // แก้ไข: ใส่ Backticks
+      return res.status(404).json({ message: `ไม่พบการมอบหมายงาน work_id=${id} technician_id=${techId}` })
     }
 
-    // 2. อัปเดต work_assign.status ด้วยค่าที่ map แล้ว
     await pool.query(
       'UPDATE work_assign SET status = ?, tech_note = ?, finished_at = NOW() WHERE work_id = ? AND technician_id = ?',
-      [mappedStatus, work_note || null, id, techId] // แก้ไข: เพิ่ม || ระหว่าง work_note กับ null
+      [mappedStatus, work_note || null, id, techId]
     )
 
-    // 3. Upsert work_report
     const [existing] = await pool.query(
       'SELECT report_id FROM work_report WHERE work_id = ? AND technician_id = ?',
       [id, techId]
@@ -208,37 +207,36 @@ export const updateTechnicianStatus = async (req, res) => {
       await pool.query(
         `UPDATE work_report
          SET work_note=?, materials_used=?, finish_time=?, submitted_at=NOW()
-         WHERE work_id=? AND technician_id=?`, // แก้ไข: ใส่ Backticks ครอบคำสั่ง SQL
-        [work_note || null, materials_used || null, finish_time || null, id, techId] // แก้ไข: เพิ่ม || ให้ครบทุกตัว
+         WHERE work_id=? AND technician_id=?`,
+        [work_note || null, materials_used || null, finish_time || null, id, techId]
       )
     } else {
       await pool.query(
         `INSERT INTO work_report (work_id, technician_id, work_note, materials_used, finish_time, submitted_at)
-         VALUES (?, ?, ?, ?, ?, NOW())`, // แก้ไข: ใส่ Backticks ครอบคำสั่ง SQL
-        [id, techId, work_note || null, materials_used || null, finish_time || null] // แก้ไข: เพิ่ม || ให้ครบทุกตัว
+         VALUES (?, ?, ?, ?, ?, NOW())`,
+        [id, techId, work_note || null, materials_used || null, finish_time || null]
       )
     }
 
-    // 4. อัปเดต work.status
     const allowedWorkStatus = ['รอดำเนินการ', 'มอบหมายแล้ว', 'รอตรวจงาน', 'เสร็จสิ้น', 'ส่งกลับแก้ไข']
     const finalWorkStatus = allowedWorkStatus.includes(work_status) ? work_status : 'รอตรวจงาน'
     await pool.query('UPDATE work SET status = ? WHERE work_id = ?', [finalWorkStatus, id])
 
-    res.status(200).json({ message: `ส่งงานสำเร็จ สถานะ: ${finalWorkStatus}` }) // แก้ไข: ใส่ Backticks
+    res.status(200).json({ message: `ส่งงานสำเร็จ สถานะ: ${finalWorkStatus}` })
   } catch (error) {
     console.error('updateTechnicianStatus error:', error.message)
     res.status(500).json({ message: 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์', error: error.message })
   }
 }
-// ── อัปโหลดรูปภาพรายงาน POST /works/:workId/report-images ────────────────────
+
 export const uploadReportImages = async (req, res) => {
   try {
     const { workId } = req.params
-    const files = req.files || {} // แก้ไข: เพิ่ม ||
+    const files = req.files || {}
 
-    const beforeImage = files.before_image?.[0]?.filename || null // แก้ไข: เพิ่ม ||
-    const afterImage = files.after_image?.[0]?.filename || null // แก้ไข: เพิ่ม ||
-    const otherImage = files.other_image?.[0]?.filename || null // แก้ไข: เพิ่ม ||
+    const beforeImage = files.before_image?.[0]?.filename || null
+    const afterImage = files.after_image?.[0]?.filename || null
+    const otherImage = files.other_image?.[0]?.filename || null
 
     if (!beforeImage && !afterImage && !otherImage) {
       return res.status(400).json({ message: 'กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป' })
@@ -253,7 +251,7 @@ export const uploadReportImages = async (req, res) => {
       await pool.query(
         `INSERT INTO work_report (work_id, technician_id, before_image, after_image, other_image, submitted_at)
          SELECT ?, technician_id, ?, ?, ?, NOW()
-         FROM work_assign WHERE work_id = ? LIMIT 1`, // แก้ไข: ใส่ Backticks ครอบคำสั่ง SQL
+         FROM work_assign WHERE work_id = ? LIMIT 1`,
         [workId, beforeImage, afterImage, otherImage, workId]
       )
     } else {
@@ -265,7 +263,7 @@ export const uploadReportImages = async (req, res) => {
       values.push(workId)
       
       await pool.query(
-        `UPDATE work_report SET ${setClauses.join(', ')} WHERE work_id = ?`, // แก้ไข: ใส่ Backticks เพื่อใช้ Template Literals ได้
+        `UPDATE work_report SET ${setClauses.join(', ')} WHERE work_id = ?`,
         values
       )
     }
@@ -280,4 +278,50 @@ export const uploadReportImages = async (req, res) => {
     console.error('uploadReportImages error:', error)
     res.status(500).json({ message: 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์', error: error.message })
   }
+}
+
+export const submitWorkReport = async (req, res) => {
+  try {
+    const { work_id, technician_id, work_note, leader_comment } = req.body;
+    const [result] = await pool.query(
+      "INSERT INTO work_report (work_id, technician_id, work_note, leader_comment) VALUES (?, ?, ?, ?)",
+      [work_id, technician_id || null, work_note, leader_comment || null]
+    );
+    res.status(201).json({ message: "ส่งรายงานสำเร็จ", reportId: result.insertId });
+  } catch (error) {
+    console.error("Error in submitWorkReport:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+  }
+};
+
+export const getWorkReportsBySupervisor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query(
+      `SELECT wr.*, w.job_name, w.location 
+       FROM work_report wr
+       JOIN work w ON wr.work_id = w.work_id
+       WHERE w.supervisor_id = ?
+       ORDER BY wr.submitted_at DESC`,
+      [id]
+    );
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Error in getWorkReportsBySupervisor:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+  }
+};
+
+export const getPendingInspectionWorks = async (supervisorId) => {
+  const [rows] = await pool.execute(
+    `SELECT w.*, wr.before_image, wr.after_image, wr.other_image, wr.work_note, wr.materials_used, wr.submitted_at as finishDate,
+            t.name as technicianName
+     FROM work w
+     INNER JOIN work_report wr ON w.work_id = wr.work_id
+     LEFT JOIN users t ON wr.technician_id = t.user_id
+     WHERE w.supervisor_id = ? AND w.status = 'รอตรวจงาน'
+     ORDER BY wr.submitted_at DESC`,
+    [supervisorId]
+  );
+  return rows;
 }

@@ -37,27 +37,13 @@ export const login = async (req, res) => {
                 break;
             case 'supervisor':
                 appRole = 'leader'; // แปลง supervisor เป็น leader เพื่อไปหน้า /leader
-                try {
-                    const [supRows] = await db.execute('SELECT supervisor_id, name FROM supervisors WHERE email = ?', [user.email]);
-                    if (supRows.length > 0) {
-                        additionalData.supervisor_id = supRows[0].supervisor_id;
-                        additionalData.name = supRows[0].name; // อัปเดตชื่อให้ตรงกับตาราง supervisors
-                    }
-                } catch (err) {
-                    console.error("Error fetching supervisor_id:", err);
-                }
+                additionalData.supervisor_id = user.user_id;
+                additionalData.name = user.name;
                 break;
             case 'technician':
                 appRole = 'user';   // แปลง technician เป็น user เพื่อไปหน้า /user
-                try {
-                    const [techRows] = await db.execute('SELECT technician_id, name FROM technicians WHERE email = ?', [user.email]);
-                    if (techRows.length > 0) {
-                        additionalData.technician_id = techRows[0].technician_id;
-                        additionalData.name = techRows[0].name; // อัปเดตชื่อให้ตรงกับตาราง technicians
-                    }
-                } catch (err) {
-                    console.error("Error fetching technician_id:", err);
-                }
+                additionalData.technician_id = user.user_id;
+                additionalData.name = user.name;
                 break;
             default:
                 appRole = 'user';
@@ -90,19 +76,9 @@ export const forgotPassword = async (req, res) => {
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
         // 2. อัปเดตในทุกตาราง (ใช้ hashedPassword แทน newPassword)
-        const queries = [
-            db.execute('UPDATE users SET password = ? WHERE email = ?', [hashedPassword, email]),
-            db.execute('UPDATE admins SET password = ? WHERE email = ?', [hashedPassword, email]),
-            db.execute('UPDATE supervisors SET password = ? WHERE email = ?', [hashedPassword, email]),
-            db.execute('UPDATE technicians SET password = ? WHERE email = ?', [hashedPassword, email])
-        ];
-
-        const results = await Promise.all(queries);
-
-        // ตรวจสอบว่ามีแถวไหนถูกอัปเดตบ้างหรือไม่
-        const totalAffected = results.reduce((acc, [res]) => acc + res.affectedRows, 0);
-
-        if (totalAffected === 0) {
+        const [result] = await db.execute('UPDATE users SET password = ? WHERE email = ?', [hashedPassword, email]);
+        
+        if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'ไม่พบอีเมลนี้ในระบบ' });
         }
 
